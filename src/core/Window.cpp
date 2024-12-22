@@ -3,6 +3,8 @@
 
 #include "SPH.cuh"
 
+bool camera = false;
+
 // Constructor
 Window::Window(int width, int height, const std::string& title)
     : width(width), height(height), title(title), window(nullptr) {}
@@ -182,7 +184,8 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
     }
 }
 
-bool camera = false;
+float localLastXpos;
+float localLastYpos;
 void Window::processInput() {
     float currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
@@ -217,6 +220,7 @@ void Window::processInput() {
     }
     if (keyStates[GLFW_KEY_C]) { // camera locked
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetCursorPos(window, localLastXpos, localLastYpos);
         camera = true;
     }
 
@@ -230,8 +234,6 @@ float localPitch = 0.0f;
 float localLastX = 400.0f, localLastY = 300.0f; // Center of screen
 glm::vec3 localCameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
-    ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2(static_cast<float>(xpos), static_cast<float>(ypos));
 
     if (camera) {
         if (localFirstMouse) {
@@ -244,6 +246,9 @@ void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
         float yoffset = localLastY - ypos; // Reversed since y-coordinates go from bottom to top
         localLastX = xpos;
         localLastY = ypos;
+
+        localLastXpos = xpos;
+        localLastYpos = ypos;
 
         float sensitivity = 0.1f;
         xoffset *= sensitivity;
@@ -267,11 +272,13 @@ void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 
 float localFov = 45.0f;
 void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    localFov -= (float)yoffset;
-    if (localFov < 1.0f)
-        localFov = 1.0f;
-    if (localFov > 45.0f)
-        localFov = 45.0f;
+    if (camera) {
+        localFov -= static_cast<float>(yoffset);
+        if (localFov < 1.0f)
+            localFov = 1.0f;
+        if (localFov > 45.0f)
+            localFov = 45.0f;
+    }
 }
 
 void Window::assignCallbackVars() {
