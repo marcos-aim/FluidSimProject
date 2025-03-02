@@ -23,7 +23,7 @@ public:
     void prepareSphereBuffers(float radius, int slices, int stacks, const std::vector<glm::mat4> &particleTransforms);
 
     void drawBox(const glm::mat4& view, const glm::mat4& projection);
-    void drawSpheres(const glm::mat4& view, const glm::mat4& projection);
+    void drawSpheres(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDirection);
 
     GLuint getShaderProgram() {return shaderProgram;}
 

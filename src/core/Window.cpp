@@ -1,8 +1,6 @@
 #include "Window.h"
 #include <iostream>
 
-#include "SPH.cuh"
-
 bool camera = false;
 
 // Constructor

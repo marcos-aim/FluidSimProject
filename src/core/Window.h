@@ -17,9 +17,9 @@
 // Struct to hold user inputs
 struct UserInput {
     // Box settings
-    float boxSizeX = 5.0f;   // Box width
-    float boxSizeY = 2.0f;   // Box height
-    float boxSizeZ = 3.0f;   // Box depth
+    float boxSizeX = 6.0f;   // Box width
+    float boxSizeY = 6.0f;   // Box height
+    float boxSizeZ = 5.0f;   // Box depth
 
     // Particle Settings
     float particleR = 0.04f;
@@ -84,13 +84,13 @@ public:
     glm::mat4 cameraProjection;
 
     Renderer* rendererWindow;
+    UserInput userInput;
 
 private:
     // Private members
     int width, height;
     std::string title;
     GLFWwindow* window;
-    UserInput userInput;
 
     // Callback helpers (as static functions)
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -99,7 +99,7 @@ private:
     static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
     std::vector<bool> keyStates = std::vector(1024, false);
-    glm::vec3 cameraPos = glm::vec3(userInput.boxSizeX/2, userInput.boxSizeY/2, userInput.boxSizeX * 1.5f);
+    glm::vec3 cameraPos = glm::vec3(userInput.boxSizeX/2, userInput.boxSizeY/2, userInput.boxSizeY * 1.5f);
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 

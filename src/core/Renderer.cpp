@@ -28,19 +28,49 @@ void Renderer::createShaderProgram() {
 
     uniform bool useInstance;  // Flag to differentiate between instanced and single-object rendering
 
+    out vec2 uv;
+
     void main() {
         mat4 effectiveModel = useInstance ? instanceModel : model;
         gl_Position = projection * view * effectiveModel * vec4(aPos, 1.0);
+        uv = aPos.xy;
     }
 
     )";
 
     const char* fragmentShaderSource = R"(
     #version 450 core
-    uniform vec4 color;
-    out vec4 FragColor;
+
+    uniform vec4 color;          // Base color of the particle
+    uniform vec3 lightDirection; // Direction of the light source
+    uniform bool useInstance;
+
+    in vec2 uv;                  // Normalized particle space coordinates
+    out vec4 FragColor;          // Output fragment color
+
     void main() {
-        FragColor = color;
+       if (!useInstance) {
+            // Flat color when instancing is not enabled
+            FragColor = color;
+            return;
+        }
+    float distFromCenter = length(uv);
+    if (distFromCenter > 1.0) discard;
+
+    vec3 normal = normalize(vec3(uv, sqrt(1.0 - distFromCenter * distFromCenter)));
+    float lightIntensity = max(dot(normal, normalize(lightDirection)), 0.0);
+
+    vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+    vec3 halfVector = normalize(viewDirection + normalize(lightDirection));
+    float specular = pow(max(dot(normal, halfVector), 0.0), 16.0) * 1;
+
+    float ambient = 0.2;
+    vec3 ambientColor = color.rgb * ambient;
+
+    vec3 shadedColor = ambientColor + (color.rgb * lightIntensity) + vec3(1.0) * specular;
+    float alpha = 1.0 - smoothstep(0.95, 1.0, distFromCenter);
+
+    FragColor = vec4(shadedColor, color.a * alpha);
     }
     )";
 
@@ -197,11 +227,15 @@ void Renderer::prepareSphereBuffers(float radius, int slices, int stacks, const 
     glBindVertexArray(0);
 }
 
-void Renderer::drawSpheres(const glm::mat4& view, const glm::mat4& projection) {
+void Renderer::drawSpheres(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDirection) {
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     glUniform1i(glGetUniformLocation(shaderProgram, "useInstance"), true);
     glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f);
+    // Pass the light direction to the shader
+    GLint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDirection");
+    glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDirection));
+
     glBindVertexArray(sphereVAO);
     glDrawElementsInstanced(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, nullptr, sphereTransforms.size());
     glBindVertexArray(0);

@@ -8,6 +8,7 @@
 
 #include "Renderer.h"
 #include "Window.h"
+#include "SPH.h"
 
 int main() {
     Window window(1280, 720, "SPH Simulation Test");
@@ -37,13 +38,11 @@ int main() {
     window.rendererWindow = &renderer;
     renderer.createShaderProgram();
 
-    // Generate bounding box data
-    float boxWidth = 5.0f, boxHeight = 2.0f, boxDepth = 3.0f;
-    renderer.prepareBoxBuffers(boxWidth, boxHeight, boxDepth);
+    renderer.prepareBoxBuffers(window.userInput.boxSizeX, window.userInput.boxSizeY, window.userInput.boxSizeZ);
 
     // Generate low-poly sphere data
     float sphereRadius = 0.05f;
-    int sphereSlices = 6, sphereStacks = 5;
+    int sphereSlices = 4, sphereStacks = 4;
 
     std::vector<glm::mat4> particleTransforms;
     // Stationary particles (example positions relative to the bounding box)
@@ -58,6 +57,14 @@ int main() {
         {4.5, 0.7, 0.3}
     };
 
+    glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 0.5f);
+    window.setupRenderHints(false, true, clearColor); // Dark gray background
+    window.initializeImGui();
+
+    SPHSimulation sphSim(window.userInput);
+    sphSim.initParticles(StartingPosition::TOP_CORNER);
+    particlePositions = sphSim.h_positions;
+
     for (const auto& position : particlePositions) {
         glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
         particleTransforms.push_back(transform);
@@ -65,10 +72,8 @@ int main() {
 
     renderer.prepareSphereBuffers(sphereRadius, sphereSlices, sphereStacks, particleTransforms);
 
-    glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 0.5f);
-    window.setupRenderHints(false, true, clearColor); // Dark gray background
-    window.initializeImGui();
 
+    float deltaTime = 0.2f;
     // Rendering loop
     while (!glfwWindowShouldClose(window.getGLFWWindow())) {
 
@@ -83,10 +88,15 @@ int main() {
         // Use shader program
         glUseProgram(renderer.getShaderProgram());
 
+        sphSim.isRunning = window.userInput.runSimulation;
+        sphSim.update(deltaTime);
+
         window.beginFrame();
 
         renderer.drawBox(window.cameraView, window.cameraProjection);
-        renderer.drawSpheres(window.cameraView, window.cameraProjection);
+
+        glm::vec3 lightDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
+        renderer.drawSpheres(window.cameraView, window.cameraProjection, lightDirection);
 
         window.renderMenu();
 
