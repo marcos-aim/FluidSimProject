@@ -1,10 +1,12 @@
 #ifndef FLUIDSIM_SPH_H
 #define FLUIDSIM_SPH_H
 
+#include "UserInput.h"
+
 #include "glad/glad.h"
 #include <vector>
 #include <glm/glm.hpp>
-#include "Window.h" // Include the user input struct
+
 
 #define MAX_NEIGHBORS 64
 #define SPAWN_SEPARATION 0.1f // Define particle separation
@@ -25,6 +27,7 @@ public:
     ~SPHSimulation();
 
     // Main Functions
+    void updateParameters(const UserInput& input);
     void initParticles(StartingPosition startType);
     void update(float deltaTime);
 

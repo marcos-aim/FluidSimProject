@@ -34,6 +34,7 @@ void Window::setupMenuTabs()
         if (changed)
         {
             rendererWindow->prepareBoxBuffers(userInput.boxSizeX, userInput.boxSizeY, userInput.boxSizeZ);
+            simulation->updateParameters(userInput);
         }
     }
 
@@ -145,6 +146,12 @@ void Window::setupMenuTabs()
             userInput.h                   = 0.15f;
             userInput.g                   = -9.8f;
             userInput.tension             = 0.2f;
+
+            simulation->updateParameters(userInput);
+        }
+
+        if (changedSPH) {
+            simulation->updateParameters(userInput);
         }
     }
 

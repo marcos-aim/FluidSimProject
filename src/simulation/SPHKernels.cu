@@ -1,3 +1,5 @@
+#include <glm/ext/scalar_constants.hpp>
+
 #include "SPH.h"
 #include <thrust/sort.h>
 #include <thrust/device_vector.h>

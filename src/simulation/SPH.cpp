@@ -79,6 +79,21 @@ SPHSimulation::~SPHSimulation() {
     std::cout << "SPHSimulation resources freed. All device memory released.\n";
 }
 
+void SPHSimulation::updateParameters(const UserInput& input) {
+    // Update internal parameters (you may need to update device memory or reinitialize simulation state)
+    smoothingRadius = input.h;
+    mass = input.mass;
+    gasConstant = input.gasConstant;
+    viscosity = input.viscosityMultiplier;
+    surfaceTension = input.tension;
+    gravity = input.g;
+    restingDensity = input.restingDensity;
+    boxSize = glm::vec3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
+    // (Reallocate buffers or reinitialize particles if necessary)
+
+    std::cout << "Simulation parameters updated.\n";
+}
+
 
 void SPHSimulation::initParticles(StartingPosition startType) {
     // Clear any existing particle data

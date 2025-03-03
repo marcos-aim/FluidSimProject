@@ -53,6 +53,7 @@ int main() {
     window.initializeImGui();
 
     SPHSimulation sphSim(window.userInput);
+    window.setSimulation(&sphSim);
     sphSim.initParticles(StartingPosition::TOP_CORNER);
     particlePositions = sphSim.h_positions;
 

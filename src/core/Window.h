@@ -6,39 +6,15 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <Renderer.h>
 #include <string>
-#include <functional>
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
-#include "Renderer.h"
-
-// Struct to hold user inputs
-struct UserInput {
-    // Box settings
-    float boxSizeX = 6.0f;   // Box width
-    float boxSizeY = 6.0f;   // Box height
-    float boxSizeZ = 5.0f;   // Box depth
-
-    // Particle Settings
-    float particleR = 0.04f;
-    int sphereSlices = 6;
-    int sphereStacks = 5;
-
-    // SPH settings
-    int particleCount = 1000.0f;
-    float restingDensity = 1000.0f; // Resting density of the fluid
-    float viscosityMultiplier = 1.0f; // Viscosity multiplier
-    float mass = 0.2f; // Pressure multiplier
-    float gasConstant = 1.0f;
-    float h = 0.15f;
-    float g = -9.8f;
-    float tension = 0.2f;
-
-    // Simulation controls
-    bool runSimulation = false;  // Toggle to run/pause the simulation
-};
+#include "SPH.h"
+#include "UserInput.h"
 
 class Window {
 public:
@@ -84,6 +60,11 @@ public:
 
     Renderer* rendererWindow;
     UserInput userInput;
+
+    // Existing declarations…
+    SPHSimulation* simulation = nullptr; // pointer to the simulation instance
+
+    void setSimulation(SPHSimulation* sim) { simulation = sim; }
 
 private:
     // Private members
