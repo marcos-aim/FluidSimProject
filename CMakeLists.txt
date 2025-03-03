@@ -10,6 +10,7 @@ add_executable(FluidSim ../FluidSimProject/src/main.cpp
         src/core/Renderer.cpp
         src/core/Window.cpp
         src/core/Timer.cpp
+        src/core/Menu.cpp
         src/simulation/SPH.cpp
         src/simulation/SPH.h
         src/simulation/SPHKernels.cu)
