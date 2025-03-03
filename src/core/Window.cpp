@@ -170,7 +170,7 @@ void Window::mouseCallback(GLFWwindow* glfwWindow, double xpos, double ypos) {
     Window* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
 
     // If the GUI wants to capture the mouse (or camera mode is disabled), do nothing.
-    if (ImGui::GetIO().WantCaptureMouse || !win->cameraMode)
+    if (!win->cameraMode)
         return;
 
     if (win->firstMouse) {
@@ -208,7 +208,7 @@ void Window::mouseCallback(GLFWwindow* glfwWindow, double xpos, double ypos) {
 
 void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset) {
     Window* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-    if (ImGui::GetIO().WantCaptureMouse || !win->cameraMode)
+    if (!win->cameraMode)
         return;
 
     win->fov -= static_cast<float>(yoffset);

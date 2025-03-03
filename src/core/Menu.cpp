@@ -158,14 +158,29 @@ void Window::setupMenuTabs()
     // --- Simulation Controls ---
     if (ImGui::CollapsingHeader("Simulation Controls"))
     {
-         if (ImGui::Checkbox("Run Simulation", &userInput.runSimulation))
-         {
-             if (userInput.runSimulation)
-                 std::cout << "Simulation started." << std::endl;
-             else
-                 std::cout << "Simulation paused." << std::endl;
-         }
+        if (ImGui::Checkbox("Run Simulation", &userInput.runSimulation))
+        {
+            if (userInput.runSimulation)
+                std::cout << "Simulation started." << std::endl;
+            else
+                std::cout << "Simulation paused." << std::endl;
+        }
+
+        // Add slider for time step (dt)
+        ImGui::Text("Time Step (dt):");
+        bool changedDt = ImGui::SliderFloat("##Delta Time Slider", &userInput.dt, 0.001f, 1.0f, "%.3f");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        changedDt |= ImGui::InputFloat("##Delta Time Input", &userInput.dt, 0.0f, 0.0f, "%.3f");
+        ImGui::PopStyleColor();
+
+        if (changedDt)
+        {
+            // Optionally update simulation parameters immediately if needed
+            simulation->updateParameters(userInput);
+        }
     }
+
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                 1000.0f / ImGui::GetIO().Framerate,

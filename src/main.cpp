@@ -65,13 +65,18 @@ int main() {
     renderer.prepareSphereBuffers(sphereRadius, sphereSlices, sphereStacks, particleTransforms);
 
 
-    float deltaTime = 0.2f;
+    float simulationDt = window.userInput.dt; // Fixed time step from the slider
+    float accumulator = 0.0f;
+    auto currentTime = static_cast<float>(glfwGetTime());
     // Rendering loop
     while (!glfwWindowShouldClose(window.getGLFWWindow())) {
+        auto newTime = static_cast<float>(glfwGetTime());
+        float frameTime = newTime - currentTime;
+        currentTime = newTime;
+        accumulator += frameTime;
 
         // Input handling
         window.processInput();
-
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -79,8 +84,14 @@ int main() {
         // Use shader program
         glUseProgram(renderer.getShaderProgram());
 
-        sphSim.isRunning = window.userInput.runSimulation;
-        sphSim.update(deltaTime);
+        simulationDt = window.userInput.dt;
+        while (accumulator >= simulationDt) {
+            sphSim.isRunning = window.userInput.runSimulation;
+            if (sphSim.isRunning) {
+                sphSim.update(simulationDt);
+            }
+            accumulator -= simulationDt;
+        }
 
         if (sphSim.isRunning) {
             const std::vector<glm::vec3>& updatedPositions = sphSim.getParticlePositions();
