@@ -41,10 +41,10 @@ private:
     // SPH Algorithm Steps
     void runUpdateKernels(float deltaTime);
     void computeHashes(int threadsPerBlock, int blocksPerGrid);
-    void computeDensityAndPressure();
-    void computeForces();
-    void moveParticles(float deltaTime);
-    void applyBoundaryConditions();
+    void computeDensityAndPressure(int threadsPerBlock, int blocksPerGrid, const int* d_neighborList, const int* d_neighborCounts) const;
+    void computeForces(int threadsPerBlock, int blocksPerGrid, const int* d_neighborList, const int* d_neighborCounts) const;
+    void moveParticles(float deltaTime, int threadsPerBlock, int blocksPerGrid) const;
+    void applyBoundaryConditions(int threadsPerBlock, int blocksPerGrid) const;
 
     // SPH Parameters
     float smoothingRadius;
@@ -53,6 +53,7 @@ private:
     float viscosity;
     float surfaceTension;
     float gravity;
+    float restingDensity;
     glm::vec3 boxSize{};
 
     // Particle Data
@@ -67,18 +68,19 @@ private:
     glm::vec3* d_accelerations{};
     float* d_densities{};
     float* d_pressures{};
+    glm::vec3* d_prevPositions{};  // Device pointer for previous positions
 
     // Uniform Grid Data
     int* d_hashes{};
     int* d_indices{};
-    int* d_cellStart{};
-    int* d_cellEnd{};
+    unsigned int* d_cellStart{};
+    unsigned int* d_cellEnd{};
     glm::ivec3 meshDims{};
     float cellSize;
 };
 
 // DEBUG:
-void printNeighborList(int* d_neighborList, int* d_neighborCounts, int numParticles, int maxNeighbors);
+void printNeighborList(const int* d_neighborList, const int* d_neighborCounts, int numParticles, int maxNeighbors);
 void printHashTable(int* d_hashes, int* d_indices, glm::vec3* d_positions, int numParticles);
 
 

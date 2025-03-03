@@ -16,6 +16,7 @@ SPHSimulation::SPHSimulation(const UserInput& input) {
     viscosity = input.viscosityMultiplier;
     surfaceTension = input.tension;
     gravity = input.g;
+    restingDensity = input.restingDensity;
     boxSize = glm::vec3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
 
     // Initialize timing record
@@ -30,13 +31,20 @@ SPHSimulation::SPHSimulation(const UserInput& input) {
     cudaMalloc(&d_accelerations, numParticles * sizeof(glm::vec3));
     cudaMalloc(&d_densities, numParticles * sizeof(float));
     cudaMalloc(&d_pressures, numParticles * sizeof(float));
+    cudaMalloc(&d_prevPositions, numParticles * sizeof(glm::vec3));
+
 
     // Allocate device memory for uniform grid data
+    meshDims = glm::ivec3(
+    static_cast<int>(boxSize.x / smoothingRadius),
+    static_cast<int>(boxSize.y / smoothingRadius),
+    static_cast<int>(boxSize.z / smoothingRadius)
+    );
     int numCells = meshDims.x * meshDims.y * meshDims.z;
     cudaMalloc(&d_hashes, numParticles * sizeof(int));
     cudaMalloc(&d_indices, numParticles * sizeof(int));
-    cudaMalloc(&d_cellStart, numCells * sizeof(int));
-    cudaMalloc(&d_cellEnd, numCells * sizeof(int));
+    cudaMalloc(&d_cellStart, numCells * sizeof(unsigned int));
+    cudaMalloc(&d_cellEnd, numCells * sizeof(unsigned int));
 
     // Initialize device memory
     cudaMemset(d_positions, 0, numParticles * sizeof(glm::vec3));
@@ -46,8 +54,8 @@ SPHSimulation::SPHSimulation(const UserInput& input) {
     cudaMemset(d_pressures, 0, numParticles * sizeof(float));
     cudaMemset(d_hashes, 0, numParticles * sizeof(int));
     cudaMemset(d_indices, 0, numParticles * sizeof(int));
-    cudaMemset(d_cellStart, -1, numCells * sizeof(int));
-    cudaMemset(d_cellEnd, -1, numCells * sizeof(int));
+    cudaMemset(d_cellStart, 0xFF, numCells * sizeof(unsigned int));
+    cudaMemset(d_cellEnd, 0, numCells * sizeof(unsigned int));
 
     std::cout << "SPHSimulation initialized with " << numParticles << " particles.\n";
 }
@@ -123,6 +131,8 @@ void SPHSimulation::initParticles(StartingPosition startType) {
 
     // Copy to device memory
     cudaMemcpy(d_positions, h_positions.data(), h_positions.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_prevPositions, h_positions.data(), numParticles * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+
 }
 
 
@@ -151,7 +161,7 @@ const std::vector<glm::vec3>& SPHSimulation::getParticlePositions() const {
 
 // DEBUG:
 
-void printNeighborList(int* d_neighborList, int* d_neighborCounts, int numParticles, int maxNeighbors) {
+void printNeighborList(const int* d_neighborList, const int* d_neighborCounts, const int numParticles, const int maxNeighbors) {
     // Allocate host memory
     std::vector<int> h_neighborList(numParticles * maxNeighbors);
     std::vector<int> h_neighborCounts(numParticles);

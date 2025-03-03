@@ -240,3 +240,20 @@ void Renderer::drawSpheres(const glm::mat4& view, const glm::mat4& projection, c
     glDrawElementsInstanced(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, nullptr, sphereTransforms.size());
     glBindVertexArray(0);
 }
+
+void Renderer::updateInstanceBuffer(const std::vector<glm::vec3>& updatedPositions) {
+    // Create a vector of transformation matrices from particle positions
+    std::vector<glm::mat4> updatedTransforms;
+    updatedTransforms.reserve(updatedPositions.size());
+    for (const auto& pos : updatedPositions) {
+        updatedTransforms.push_back(glm::translate(glm::mat4(1.0f), pos));
+    }
+
+    // Update the member variable for instance transforms
+    sphereTransforms = updatedTransforms;
+
+    // Update the instance VBO with the new transforms
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, updatedTransforms.size() * sizeof(glm::mat4), updatedTransforms.data());
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}

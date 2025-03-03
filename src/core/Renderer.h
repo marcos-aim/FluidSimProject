@@ -27,6 +27,8 @@ public:
 
     GLuint getShaderProgram() {return shaderProgram;}
 
+    void updateInstanceBuffer(const std::vector<glm::vec3>& updatedPositions);
+
     std::vector<glm::mat4> sphereTransforms;
 
 private:

@@ -34,3 +34,11 @@ target_link_libraries(FluidSim PRIVATE ${CUDAToolkit_LIBRARIES})
 
 set_target_properties(FluidSim PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
+
+# For C++: Append -O3 to the release flags.
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+
+# For CUDA: Append -O3 to the release flags.
+set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} -O3 -diag-suppress=2886")
+
+target_compile_options(FluidSim PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)

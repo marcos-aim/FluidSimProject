@@ -46,16 +46,7 @@ int main() {
 
     std::vector<glm::mat4> particleTransforms;
     // Stationary particles (example positions relative to the bounding box)
-    std::vector<glm::vec3> particlePositions = {
-        {0.5f, 0.5f, 0.5f},
-        {1.5f, 0.5f, 0.5f},
-        {2.5f, 1.5f, 1.0f},
-        {1.0f, 1.0f, 1.5f},
-        {0.5f, 1.5f, 2.5f},
-        {4, 1, 2.7},
-        {3.6, 1.4, 2.4},
-        {4.5, 0.7, 0.3}
-    };
+    std::vector<glm::vec3> particlePositions;
 
     glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 0.5f);
     window.setupRenderHints(false, true, clearColor); // Dark gray background
@@ -91,6 +82,11 @@ int main() {
         sphSim.isRunning = window.userInput.runSimulation;
         sphSim.update(deltaTime);
 
+        if (sphSim.isRunning) {
+            const std::vector<glm::vec3>& updatedPositions = sphSim.getParticlePositions();
+            renderer.updateInstanceBuffer(updatedPositions);
+        }
+
         window.beginFrame();
 
         renderer.drawBox(window.cameraView, window.cameraProjection);
@@ -105,7 +101,5 @@ int main() {
 
     // Cleanup and exit
     std::cout << "Cleaning up resources..." << std::endl;
-    return 0;
-
     return 0;
 }
