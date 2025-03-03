@@ -1,11 +1,10 @@
 #include "Window.h"
 #include <iostream>
-
-bool camera = false;
+#include <utility>
 
 // Constructor
-Window::Window(int width, int height, const std::string& title)
-    : width(width), height(height), title(title), window(nullptr) {}
+Window::Window(int width, int height, std::string  title)
+    : width(width), height(height), title(std::move(title)), window(nullptr) {}
 
 // Destructor
 Window::~Window() {
@@ -35,6 +34,9 @@ bool Window::createWindow() {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    // In createWindow() after window creation, add:
+    glfwSetWindowUserPointer(window, this);
+
     return true;
 }
 
@@ -61,7 +63,7 @@ void Window::setupRenderHints(bool vsync, bool antialiasing, glm::vec4& clearCol
 }
 
 // Initialize ImGui
-void Window::initializeImGui() {
+void Window::initializeImGui() const {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -170,17 +172,20 @@ void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) 
     glViewport(0, 0, width, height);
 }
 
-std::vector<bool> localKeyStates = std::vector(1024, false);
-void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key >= 0 && key < 1024) {
+void Window::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods) {
+    // Retrieve the Window instance:
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+    if (key >= 0 && key < win->keyStates.size()) {
         if (action == GLFW_PRESS) {
-            localKeyStates[key] = true;  // Key is pressed
-            if (localKeyStates[GLFW_KEY_ESCAPE]) glfwSetWindowShouldClose(window, true);
+            win->keyStates[key] = true;
+            if (win->keyStates[GLFW_KEY_ESCAPE])
+                glfwSetWindowShouldClose(glfwWindow, true);
         } else if (action == GLFW_RELEASE) {
-            localKeyStates[key] = false; // Key is released
+            win->keyStates[key] = false;
         }
     }
 }
+
 
 float localLastXpos;
 float localLastYpos;
@@ -214,78 +219,64 @@ void Window::processInput() {
 
     if (keyStates[GLFW_KEY_M]) { // menu mouse free
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        camera = false;
+        cameraMode = false;
     }
     if (keyStates[GLFW_KEY_C]) { // camera locked
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         glfwSetCursorPos(window, localLastXpos, localLastYpos);
-        camera = true;
+        cameraMode = true;
     }
 
     cameraView = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
     cameraProjection = glm::perspective(glm::radians(fov), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
 }
 
-bool localFirstMouse = true;
-float localYaw = -90.0f; // Initialize to face -Z
-float localPitch = 0.0f;
-float localLastX = 400.0f, localLastY = 300.0f; // Center of screen
-glm::vec3 localCameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+void Window::mouseCallback(GLFWwindow* glfwWindow, double xpos, double ypos) {
+    // Retrieve the Window instance
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
 
-    if (camera) {
-        if (localFirstMouse) {
-            localLastX = xpos;
-            localLastY = ypos;
-            localFirstMouse = false;
-        }
+    // If the GUI wants to capture the mouse (or camera mode is disabled), do nothing.
+    if (ImGui::GetIO().WantCaptureMouse || !win->cameraMode)
+        return;
 
-        float xoffset = xpos - localLastX;
-        float yoffset = localLastY - ypos; // Reversed since y-coordinates go from bottom to top
-        localLastX = xpos;
-        localLastY = ypos;
-
-        localLastXpos = xpos;
-        localLastYpos = ypos;
-
-        float sensitivity = 0.1f;
-        xoffset *= sensitivity;
-        yoffset *= sensitivity;
-
-        localYaw += xoffset;
-        localPitch += yoffset;
-
-        if (localPitch > 89.0f)
-            localPitch = 89.0f;
-        if (localPitch < -89.0f)
-            localPitch = -89.0f;
-
-        glm::vec3 front;
-        front.x = glm::cos(glm::radians(localYaw)) * glm::cos(glm::radians(localPitch));
-        front.y = glm::sin(glm::radians(localPitch));
-        front.z = glm::sin(glm::radians(localYaw)) * glm::cos(glm::radians(localPitch));
-        localCameraFront = glm::normalize(front);
+    if (win->firstMouse) {
+        win->lastX = xpos;
+        win->lastY = ypos;
+        win->firstMouse = false;
     }
+
+    float xoffset = xpos - win->lastX;
+    float yoffset = win->lastY - ypos; // reversed since y goes from bottom to top
+    win->lastX = xpos;
+    win->lastY = ypos;
+
+    localLastYpos = ypos;
+    localLastXpos = xpos;
+
+    float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    win->yaw += xoffset;
+    win->pitch += yoffset;
+
+    if (win->pitch > 89.0f)
+        win->pitch = 89.0f;
+    if (win->pitch < -89.0f)
+        win->pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(win->yaw)) * cos(glm::radians(win->pitch));
+    front.y = sin(glm::radians(win->pitch));
+    front.z = sin(glm::radians(win->yaw)) * cos(glm::radians(win->pitch));
+    win->cameraFront = glm::normalize(front);
 }
 
-float localFov = 45.0f;
-void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    if (camera) {
-        localFov -= static_cast<float>(yoffset);
-        if (localFov < 1.0f)
-            localFov = 1.0f;
-        if (localFov > 45.0f)
-            localFov = 45.0f;
-    }
-}
-
-void Window::assignCallbackVars() {
-    firstMouse = localFirstMouse;
-    yaw = localYaw;
-    pitch = localPitch;
-    lastX = localLastX;
-    lastY = localLastY;
-    cameraFront = localCameraFront;
-    fov = localFov;
-    keyStates = localKeyStates;
+void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset) {
+    auto* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+    win->fov -= static_cast<float>(yoffset);
+    if (win->fov < 1.0f)
+        win->fov = 1.0f;
+    if (win->fov > 45.0f)
+        win->fov = 45.0f;
 }

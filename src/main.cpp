@@ -69,7 +69,6 @@ int main() {
     while (!glfwWindowShouldClose(window.getGLFWWindow())) {
 
         // Input handling
-        window.assignCallbackVars();
         window.processInput();
 
         // Clear screen

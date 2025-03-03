@@ -43,7 +43,7 @@ struct UserInput {
 class Window {
 public:
     // Constructor
-    Window(int width, int height, const std::string& title);
+    Window(int width, int height, std::string  title);
 
     // Destructor
     ~Window();
@@ -60,7 +60,7 @@ public:
     void setupRenderHints(bool vsync, bool antialiasing, glm::vec4& clearColor);
 
     // Initialize ImGui
-    void initializeImGui();
+    void initializeImGui() const;
 
     // Setup ImGui menu tabs
     void setupMenuTabs();
@@ -76,7 +76,6 @@ public:
     // Getters and setters
     GLFWwindow* getGLFWWindow() const { return window; }
     const UserInput& getUserInput() const { return userInput; }
-    void assignCallbackVars();
     void processInput();
     void setUserInput(const UserInput& input) { userInput = input; }
 
@@ -105,6 +104,7 @@ private:
 
     float deltaTime = 0.0f; // Time between current frame and last frame
     float lastFrame = 0.0f;
+    bool cameraMode = false;
 
     // Mouse input
     bool firstMouse = true;
