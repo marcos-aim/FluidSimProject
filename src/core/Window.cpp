@@ -70,72 +70,6 @@ void Window::initializeImGui() const {
     ImGui_ImplOpenGL3_Init("#version 450");
 }
 
-// Setup ImGui menu tabs
-void Window::setupMenuTabs() {
-    ImGui::Begin("Simulation Menu");
-
-    // Box Settings Dropdown
-    if (ImGui::CollapsingHeader("Box Settings")) {
-        bool sizeXChanged = ImGui::SliderFloat("Box Size X", &userInput.boxSizeX, 0.1f, 10.0f);
-        bool sizeYChanged = ImGui::SliderFloat("Box Size Y", &userInput.boxSizeY, 0.1f, 10.0f);
-        bool sizeZChanged = ImGui::SliderFloat("Box Size Z", &userInput.boxSizeZ, 0.1f, 10.0f);
-
-        // Check and print messages when a value changes
-        if (sizeXChanged || sizeYChanged || sizeZChanged) {
-            rendererWindow->prepareBoxBuffers(userInput.boxSizeX, userInput.boxSizeY, userInput.boxSizeZ);
-        }
-    }
-
-    if (ImGui::CollapsingHeader("Particle Settings")) {
-        bool radiusChanged = ImGui::SliderFloat("Particle Radius", &userInput.particleR, 0.01f, 0.3f);
-        bool slicesChanged = ImGui::SliderInt("Sphere Slices", &userInput.sphereSlices, 4, 20);
-        bool stacksChanged = ImGui::SliderInt("Sphere Stacks", &userInput.sphereStacks, 4, 20);
-
-        // Check and update sphere buffers if any sphere-related parameter changes
-        if (radiusChanged || slicesChanged || stacksChanged) {
-            rendererWindow->prepareSphereBuffers(userInput.particleR, userInput.sphereSlices, userInput.sphereStacks,
-                rendererWindow->sphereTransforms);
-        }
-    }
-
-    // SPH Settings Dropdown
-    if (ImGui::CollapsingHeader("SPH Settings")) {
-        ImGui::SliderInt("Particle Count", &userInput.particleCount, 0, 50000, "%.1f");
-        ImGui::SliderFloat("Resting Density", &userInput.restingDensity, 500.0f, 2000.0f, "%.1f");
-        ImGui::SliderFloat("Viscosity Multiplier", &userInput.viscosityMultiplier, 0.1f, 10.0f, "%.2f");
-        ImGui::SliderFloat("Mass", &userInput.mass, 0.1f, 5.0f, "%.2f");
-        ImGui::SliderFloat("Gas Constant", &userInput.gasConstant, 0.1f, 10.0f, "%.2f");
-        ImGui::SliderFloat("Smoothing Radius (h)", &userInput.h, 0.05f, 1.0f, "%.3f");
-        ImGui::SliderFloat("Gravity (g)", &userInput.g, -20.0f, 0.0f, "%.1f");
-        ImGui::SliderFloat("Surface Tension", &userInput.tension, 0.0f, 1.0f, "%.2f");
-
-        if (ImGui::Button("Reset to Defaults")) {
-            userInput.restingDensity = 1000.0f;
-            userInput.viscosityMultiplier = 1.0f;
-            userInput.mass = 0.2f;
-            userInput.gasConstant = 1.0f;
-            userInput.h = 0.15f;
-            userInput.g = -9.8f;
-            userInput.tension = 0.2f;
-        }
-    }
-
-
-    // Simulation Controls Dropdown
-    if (ImGui::CollapsingHeader("Simulation Controls")) {
-        if (ImGui::Checkbox("Run Simulation", &userInput.runSimulation)) {
-            if (userInput.runSimulation) {
-                std::cout << "Simulation started." << std::endl;
-            } else {
-                std::cout << "Simulation paused." << std::endl;
-            }
-        }
-    }
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
-}
-
-
 // Start ImGui frame
 void Window::beginFrame() {
     ImGui_ImplOpenGL3_NewFrame();
@@ -273,7 +207,10 @@ void Window::mouseCallback(GLFWwindow* glfwWindow, double xpos, double ypos) {
 }
 
 void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffset) {
-    auto* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+    if (ImGui::GetIO().WantCaptureMouse || !win->cameraMode)
+        return;
+
     win->fov -= static_cast<float>(yoffset);
     if (win->fov < 1.0f)
         win->fov = 1.0f;
