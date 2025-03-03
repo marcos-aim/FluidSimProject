@@ -13,7 +13,7 @@ struct UserInput {
     int sphereStacks = 5;
 
     // SPH settings
-    int particleCount = 2;
+    int particleCount = 10000;
     float restingDensity = 1000.0f;
     float viscosityMultiplier = 1.0f;
     float mass = 0.2f;

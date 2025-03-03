@@ -44,7 +44,7 @@ void Window::setupMenuTabs()
         bool changedParticle = false;
         // Particle Radius:
         ImGui::Text("Particle Radius:");
-        changedParticle |= ImGui::SliderFloat("##Particle Radius Slider", &userInput.particleR, 0.01f, 100.0f, "%.2f");
+        changedParticle |= ImGui::SliderFloat("##Particle Radius Slider", &userInput.particleR, 0.01f, 1, "%.2f");
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
         changedParticle |= ImGui::InputFloat("##Particle Radius Input", &userInput.particleR, 0.0f, 0.0f, "%.3f");
