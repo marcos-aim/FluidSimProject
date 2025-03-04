@@ -34,6 +34,8 @@ public:
     // Query Functions
     std::vector<glm::vec3> h_positions;
     std::vector<glm::vec3>& getParticlePositions();
+    float3* getDevicePositions();
+    int getNumParticles();
 
     // Status
     bool isRunning{};

@@ -6,11 +6,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
+#include <cuda_gl_interop.h>
+#include <cuda_runtime.h>
 #include <filesystem>
+
+#include "RendererKernels.h"
 
 class Renderer {
 public:
@@ -28,6 +28,7 @@ public:
     GLuint getShaderProgram() {return shaderProgram;}
 
     void updateInstanceBuffer(const std::vector<glm::vec3>& updatedPositions);
+    void updateInstanceBufferWithCuda(float3* d_positions, int numParticles);
 
     std::vector<glm::mat4> sphereTransforms;
 
@@ -47,6 +48,8 @@ private:
 
     void generateBoxData(float width, float height, float depth);
     void generateSphereData(float radius, int slices, int stacks);
+
+    cudaGraphicsResource_t cudaInstanceResource = nullptr;
 };
 
 #endif // RENDERER_H

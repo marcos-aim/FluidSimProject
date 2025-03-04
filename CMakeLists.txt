@@ -13,7 +13,8 @@ add_executable(FluidSim ../FluidSimProject/src/main.cpp
         src/core/Menu.cpp
         src/simulation/SPH.cpp
         src/simulation/SPH.h
-        src/simulation/SPHKernels.cu)
+        src/simulation/SPHKernels.cu
+        src/core/RendererKernels.cu)
 
 # include directories for headers
 target_include_directories(FluidSim PRIVATE ../FluidSimProject/include)

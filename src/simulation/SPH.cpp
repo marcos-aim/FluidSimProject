@@ -119,9 +119,6 @@ void SPHSimulation::updateParameters(const UserInput& input) {
     std::cout << "SPHSimulation parameters updated." << std::endl;
 }
 
-
-
-
 void SPHSimulation::initParticles(StartingPosition startType) {
     // Clear any existing particle data
     h_positions.clear();
@@ -200,4 +197,12 @@ std::vector<glm::vec3>& SPHSimulation::getParticlePositions() {
         h_positions[i] = glm::vec3(devicePositions[i].x, devicePositions[i].y, devicePositions[i].z);
     }
     return h_positions;
+}
+
+float3* SPHSimulation::getDevicePositions() {
+    return d_positions;
+}
+
+int SPHSimulation::getNumParticles() {
+    return numParticles;
 }

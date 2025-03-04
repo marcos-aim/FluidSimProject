@@ -1,8 +1,12 @@
 #include "Renderer.h"
+#include <iostream>
 
 Renderer::Renderer() : boxVAO(0), boxVBO(0), boxEBO(0), sphereVAO(0), sphereVBO(0), sphereEBO(0), instanceVBO(0) {}
 
 Renderer::~Renderer() {
+    if (cudaInstanceResource) {
+        cudaGraphicsUnregisterResource(cudaInstanceResource);
+    }
     glDeleteVertexArrays(1, &boxVAO);
     glDeleteBuffers(1, &boxVBO);
     glDeleteBuffers(1, &boxEBO);
@@ -216,7 +220,13 @@ void Renderer::prepareSphereBuffers(float radius, int slices, int stacks, const 
 
     glGenBuffers(1, &instanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, particleTransforms.size() * sizeof(glm::mat4), particleTransforms.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, particleTransforms.size() * sizeof(glm::mat4), particleTransforms.data(), GL_DYNAMIC_DRAW);
+
+    // Register the instanceVBO with CUDA for direct access.
+    cudaError_t cudaStatus = cudaGraphicsGLRegisterBuffer(&cudaInstanceResource, instanceVBO, cudaGraphicsRegisterFlagsNone);
+    if (cudaStatus != cudaSuccess) {
+        std::cerr << "Failed to register instanceVBO with CUDA: " << cudaGetErrorString(cudaStatus) << std::endl;
+    }
 
     glBindVertexArray(sphereVAO);
     for (int i = 0; i < 4; i++) {
@@ -256,4 +266,30 @@ void Renderer::updateInstanceBuffer(const std::vector<glm::vec3>& updatedPositio
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, updatedTransforms.size() * sizeof(glm::mat4), updatedTransforms.data());
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+#include "RendererKernels.h" // Make sure this include is present at the top if not already
+
+void Renderer::updateInstanceBufferWithCuda(float3* d_positions, int numParticles) {
+    // Map the instance VBO so that CUDA can access it directly.
+    cudaError_t err = cudaGraphicsMapResources(1, &cudaInstanceResource, 0);
+    if (err != cudaSuccess) {
+        std::cerr << "cudaGraphicsMapResources failed: " << cudaGetErrorString(err) << std::endl;
+        return;
+    }
+
+    size_t numBytes = 0;
+    float* d_instanceTransforms = nullptr;
+    err = cudaGraphicsResourceGetMappedPointer((void**)&d_instanceTransforms, &numBytes, cudaInstanceResource);
+    if (err != cudaSuccess) {
+        std::cerr << "cudaGraphicsResourceGetMappedPointer failed: " << cudaGetErrorString(err) << std::endl;
+        cudaGraphicsUnmapResources(1, &cudaInstanceResource, 0);
+        return;
+    }
+
+    // Launch the kernel to update instance transforms directly into the mapped buffer.
+    launchUpdateInstanceTransformsKernel(d_positions, d_instanceTransforms, numParticles);
+
+    // Unmap the resource so OpenGL can use the updated data.
+    cudaGraphicsUnmapResources(1, &cudaInstanceResource, 0);
 }

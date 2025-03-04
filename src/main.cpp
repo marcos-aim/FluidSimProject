@@ -94,8 +94,7 @@ int main() {
         }
 
         if (sphSim.isRunning) {
-            const std::vector<glm::vec3>& updatedPositions = sphSim.getParticlePositions();
-            renderer.updateInstanceBuffer(updatedPositions);
+            renderer.updateInstanceBufferWithCuda(sphSim.getDevicePositions(), sphSim.getNumParticles());
         }
 
         window.beginFrame();
