@@ -356,48 +356,69 @@ __global__ void UpdatePositionsKernel(
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-    for(; idx < numParticles; idx += stride)
+
+    // These constants can be tuned:
+    const float boundaryOffset = 0.01f;    // Push particles slightly inside the wall.
+    const float tangentialDamping = 0.95f; // Dampen the velocity parallel to the wall.
+
+    for (; idx < numParticles; idx += stride)
     {
         // Update positions based on velocities.
         positions[idx].x += velocities[idx].x * deltaTime;
         positions[idx].y += velocities[idx].y * deltaTime;
         positions[idx].z += velocities[idx].z * deltaTime;
 
-        // Simple collision resolution against axis–aligned box boundaries.
+        // Collision resolution on X-axis.
         if (positions[idx].x < 0.0f)
         {
-            positions[idx].x = 0.0f;
+            positions[idx].x = boundaryOffset;
             velocities[idx].x = -velocities[idx].x * collisionDamping;
+            // Dampen the tangential components.
+            velocities[idx].y *= tangentialDamping;
+            velocities[idx].z *= tangentialDamping;
         }
         else if (positions[idx].x > boxSize.x)
         {
-            positions[idx].x = boxSize.x;
+            positions[idx].x = boxSize.x - boundaryOffset;
             velocities[idx].x = -velocities[idx].x * collisionDamping;
+            velocities[idx].y *= tangentialDamping;
+            velocities[idx].z *= tangentialDamping;
         }
 
+        // Collision resolution on Y-axis.
         if (positions[idx].y < 0.0f)
         {
-            positions[idx].y = 0.0f;
+            positions[idx].y = boundaryOffset;
             velocities[idx].y = -velocities[idx].y * collisionDamping;
+            velocities[idx].x *= tangentialDamping;
+            velocities[idx].z *= tangentialDamping;
         }
         else if (positions[idx].y > boxSize.y)
         {
-            positions[idx].y = boxSize.y;
+            positions[idx].y = boxSize.y - boundaryOffset;
             velocities[idx].y = -velocities[idx].y * collisionDamping;
+            velocities[idx].x *= tangentialDamping;
+            velocities[idx].z *= tangentialDamping;
         }
 
+        // Collision resolution on Z-axis.
         if (positions[idx].z < 0.0f)
         {
-            positions[idx].z = 0.0f;
+            positions[idx].z = boundaryOffset;
             velocities[idx].z = -velocities[idx].z * collisionDamping;
+            velocities[idx].x *= tangentialDamping;
+            velocities[idx].y *= tangentialDamping;
         }
         else if (positions[idx].z > boxSize.z)
         {
-            positions[idx].z = boxSize.z;
+            positions[idx].z = boxSize.z - boundaryOffset;
             velocities[idx].z = -velocities[idx].z * collisionDamping;
+            velocities[idx].x *= tangentialDamping;
+            velocities[idx].y *= tangentialDamping;
         }
     }
 }
+
 
 struct CompareUint3 {
     __device__ bool operator()(const uint3 &a, const uint3 &b) const {
