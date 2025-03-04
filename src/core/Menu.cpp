@@ -1,4 +1,6 @@
 #include "Window.h"
+#include <imgui.h>
+#include <iostream>
 
 void Window::setupMenuTabs()
 {
@@ -44,7 +46,7 @@ void Window::setupMenuTabs()
         bool changedParticle = false;
         // Particle Radius:
         ImGui::Text("Particle Radius:");
-        changedParticle |= ImGui::SliderFloat("##Particle Radius Slider", &userInput.particleR, 0.01f, 1, "%.2f");
+        changedParticle |= ImGui::SliderFloat("##Particle Radius Slider", &userInput.particleR, 0.01f, 1.0f, "%.2f");
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
         changedParticle |= ImGui::InputFloat("##Particle Radius Input", &userInput.particleR, 0.0f, 0.0f, "%.3f");
@@ -105,12 +107,20 @@ void Window::setupMenuTabs()
         changedSPH |= ImGui::InputFloat("##Mass Input", &userInput.mass, 0.0f, 0.0f, "%.3f");
         ImGui::PopStyleColor();
 
-        // Gas Constant:
-        ImGui::Text("Gas Constant:");
-        changedSPH |= ImGui::SliderFloat("##Gas Constant Slider", &userInput.gasConstant, 0.0f, 50.0f, "%.2f");
+        // Pressure Multiplier:
+        ImGui::Text("Pressure Multiplier:");
+        changedSPH |= ImGui::SliderFloat("##Pressure Multiplier Slider", &userInput.pMult, 0.0f, 50.0f, "%.2f");
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
-        changedSPH |= ImGui::InputFloat("##Gas Constant Input", &userInput.gasConstant, 0.0f, 0.0f, "%.3f");
+        changedSPH |= ImGui::InputFloat("##Pressure Multiplier Input", &userInput.pMult, 0.0f, 0.0f, "%.3f");
+        ImGui::PopStyleColor();
+
+        // Near Pressure Multiplier:
+        ImGui::Text("Near Pressure Multiplier:");
+        changedSPH |= ImGui::SliderFloat("##Near Pressure Multiplier Slider", &userInput.nearPMult, 0.0f, 50.0f, "%.2f");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        changedSPH |= ImGui::InputFloat("##Near Pressure Multiplier Input", &userInput.nearPMult, 0.0f, 0.0f, "%.3f");
         ImGui::PopStyleColor();
 
         // Smoothing Radius (h):
@@ -137,15 +147,25 @@ void Window::setupMenuTabs()
         changedSPH |= ImGui::InputFloat("##Surface Tension Input", &userInput.tension, 0.0f, 0.0f, "%.3f");
         ImGui::PopStyleColor();
 
+        // Collision Damping:
+        ImGui::Text("Collision Damping:");
+        changedSPH |= ImGui::SliderFloat("##Collision Damping Slider", &userInput.collisionDamping, 0.0f, 1.0f, "%.2f");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        changedSPH |= ImGui::InputFloat("##Collision Damping Input", &userInput.collisionDamping, 0.0f, 0.0f, "%.3f");
+        ImGui::PopStyleColor();
+
         if (ImGui::Button("Reset to Defaults"))
         {
             userInput.restingDensity      = 1000.0f;
             userInput.viscosityMultiplier = 1.0f;
             userInput.mass                = 0.2f;
-            userInput.gasConstant         = 1.0f;
+            userInput.pMult               = 1.0f;
+            userInput.nearPMult           = 0.5f;
             userInput.h                   = 0.15f;
             userInput.g                   = -9.8f;
             userInput.tension             = 0.2f;
+            userInput.collisionDamping    = 0.8f;
 
             simulation->updateParameters(userInput);
         }
@@ -166,7 +186,7 @@ void Window::setupMenuTabs()
                 std::cout << "Simulation paused." << std::endl;
         }
 
-        // Add slider for time step (dt)
+        // Time Step (dt)
         ImGui::Text("Time Step (dt):");
         bool changedDt = ImGui::SliderFloat("##Delta Time Slider", &userInput.dt, 0.001f, 1.0f, "%.3f");
         ImGui::SameLine();
@@ -176,11 +196,9 @@ void Window::setupMenuTabs()
 
         if (changedDt)
         {
-            // Optionally update simulation parameters immediately if needed
             simulation->updateParameters(userInput);
         }
     }
-
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                 1000.0f / ImGui::GetIO().Framerate,

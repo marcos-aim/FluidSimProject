@@ -3,9 +3,9 @@
 
 struct UserInput {
     // Box settings
-    float boxSizeX = 6.0f;
-    float boxSizeY = 6.0f;
-    float boxSizeZ = 5.0f;
+    float boxSizeX = 12.0f;
+    float boxSizeY = 8.0f;
+    float boxSizeZ = 12.0f;
 
     // Particle settings
     float particleR = 0.04f;
@@ -13,19 +13,20 @@ struct UserInput {
     int sphereStacks = 5;
 
     // SPH settings
-    int particleCount = 10000;
-    float restingDensity = 1000.0f;
-    float viscosityMultiplier = 1.0f;
-    float mass = 0.2f;
-    float gasConstant = 1.0f;
-    float h = 0.15f;
-    float g = -9.8f;
-    float tension = 0.2f;
+    int particleCount = 50000;
+    float restingDensity = 67.0f;      // Resting (target) density
+    float viscosityMultiplier = 0.34f;    // Viscosity multiplier
+    float mass = 0.5f;                   // Particle mass
+    float pMult = 50.0f;                  // Pressure multiplier (can override gasConstant)
+    float nearPMult = 2.25f;              // Near-pressure multiplier (can override gasConstant*0.5)
+    float h = 0.33f;                     // Smoothing radius
+    float g = -9.8f;                     // Gravity (typically negative)
+    float tension = 0.2f;                // Surface tension
+    float collisionDamping = 0.95f;       // Collision damping factor
 
     // Simulation controls
     bool runSimulation = false;
-
-    float dt = 0.2f;
+    float dt = 1 / 60.f;                     // Time step
 };
 
 #endif // USERINPUT_H
