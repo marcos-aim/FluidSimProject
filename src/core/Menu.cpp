@@ -163,6 +163,10 @@ void Window::setupMenuTabs()
         changedSPH |= ImGui::InputFloat("##Collision Damping Input", &userInput.collisionDamping, 0.0f, 0.0f, "%.3f");
         ImGui::PopStyleColor();
 
+        changedSPH |= ImGui::Checkbox("Render Voxel Grid", &userInput.renderVoxelGrid);
+        ImGui::SameLine();
+        changedSPH |=ImGui::Checkbox("Highlight Resting?",  &userInput.checkResting);
+
         if (ImGui::Button("Reset to Defaults"))
         {
             userInput.restingDensity      = 1000.0f;

@@ -362,7 +362,7 @@ __global__ void UpdatePositionsKernel(
 
     // These constants can be tuned:
     const float boundaryOffset = 0.01f;    // Push particles slightly inside the wall.
-    const float tangentialDamping = 0.95f; // Dampen the velocity parallel to the wall.
+    const float tangentialDamping = 0.90f; // Dampen the velocity parallel to the wall.
 
     for (; idx < numParticles; idx += stride)
     {

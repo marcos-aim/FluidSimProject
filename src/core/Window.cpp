@@ -37,6 +37,28 @@ bool Window::createWindow() {
     // In createWindow() after window creation, add:
     glfwSetWindowUserPointer(window, this);
 
+    glm::vec3 boxCenter(
+    userInput.boxSizeX * 0.5f,
+    userInput.boxSizeY * 0.5f,
+    userInput.boxSizeZ * 0.5f
+    );
+
+    float aspect = float(width) / float(height);
+    float fovRad = glm::radians(fov);
+
+    float halfH = userInput.boxSizeY * 0.5f;
+    float halfW = userInput.boxSizeX * 0.5f;
+
+    float dY = halfH / tan(fovRad * 0.5f);
+    float dX = halfW / (tan(fovRad * 0.5f) * aspect);
+    float d  = glm::max(dX, dY) * 1.5f;
+
+    cameraPos   = boxCenter + glm::vec3(0.0f, 0.0f, d);
+    cameraFront = glm::normalize(boxCenter - cameraPos);
+
+    cameraView       = glm::lookAt(cameraPos, boxCenter, cameraUp);
+    cameraProjection = glm::perspective(fovRad, aspect, 0.1f, 100.0f);
+
     return true;
 }
 
@@ -72,6 +94,17 @@ void Window::initializeImGui() const {
 
 // Start ImGui frame
 void Window::beginFrame() {
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    // Disable mouse input when in camera mode
+    io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse; // clear it first
+
+    if (cameraMode) {
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();

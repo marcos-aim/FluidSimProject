@@ -92,6 +92,16 @@ int main() {
 
             renderer.drawScreenQuad();
         }
+        else if (window.userInput.renderVoxelGrid) {
+            // --- VOXEL-GRID DEBUG MODE ---
+            // Pull down the CUDA density grid and draw instanced cubes + grid lines
+            renderer.renderVoxelGrid(
+                window.userInput,
+                sphSim,
+                window.cameraView,
+                window.cameraProjection
+            );
+        }
         else {
             // --- SPH BOX+SPHERE MODE ---
             if (sphSim.isRunning) {

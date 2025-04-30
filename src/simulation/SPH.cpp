@@ -218,29 +218,49 @@ int SPHSimulation::getNumParticles() {
 
 void SPHSimulation::initDensityGrid() {
     // 1) compute voxel counts (ceil to cover entire box)
-    gridDims.x     = (unsigned)std::ceil(boxSize.x / cellSize);
-    gridDims.y     = (unsigned)std::ceil(boxSize.y / cellSize);
-    gridDims.z     = (unsigned)std::ceil(boxSize.z / cellSize);
+    gridDims.x = static_cast<unsigned int>(std::ceil(boxSize.x / cellSize));
+    gridDims.y = static_cast<unsigned int>(std::ceil(boxSize.y / cellSize));
+    gridDims.z = static_cast<unsigned int>(std::ceil(boxSize.z / cellSize));
+
+    gridDims.x = std::max(gridDims.x, 1u);
+    gridDims.y = std::max(gridDims.y, 1u);
+    gridDims.z = std::max(gridDims.z, 1u);
 
     // 2) allocate 3D CUDA array
     cudaChannelFormatDesc ch = cudaCreateChannelDesc<float>();
-    cudaExtent extent{gridDims.x,gridDims.y,gridDims.z};
+    cudaExtent extent{gridDims.x, gridDims.y, gridDims.z};
     cudaMalloc3DArray(&d_densityArray, &ch, extent);
 
     // 3) bind as surface for writes
     cudaResourceDesc rd = {};
-    rd.resType            = cudaResourceTypeArray;
-    rd.res.array.array    = d_densityArray;
+    rd.resType = cudaResourceTypeArray;
+    rd.res.array.array = d_densityArray;
     cudaCreateSurfaceObject(&densitySurf, &rd);
 
     // 4) create linear-filtered texture for sampling
     cudaResourceDesc trd = rd;
-    cudaTextureDesc  td  = {};
-    td.normalizedCoords  = true;
-    td.filterMode        = cudaFilterModeLinear;
-    td.addressMode[0]    =
-    td.addressMode[1]    =
-    td.addressMode[2]    = cudaAddressModeClamp;
+    cudaTextureDesc td = {};
+    td.normalizedCoords = true;
+    td.filterMode = cudaFilterModeLinear;
+    td.addressMode[0] =
+            td.addressMode[1] =
+            td.addressMode[2] = cudaAddressModeClamp;
     cudaCreateTextureObject(&densityTex, &trd, &td, nullptr);
 }
 
+void SPHSimulation::downloadDensityGrid(std::vector<float> &outBuf) {
+    const size_t N = static_cast<size_t>(gridDims.x) * gridDims.y * gridDims.z;
+    outBuf.resize(N);
+
+    // setup pitched pointer
+    cudaMemcpy3DParms p = {};
+    p.srcArray = d_densityArray;
+    p.dstPtr.ptr = outBuf.data();
+    p.dstPtr.pitch = gridDims.x * sizeof(float);
+    p.dstPtr.xsize = gridDims.x;
+    p.dstPtr.ysize = gridDims.y;
+    p.extent = make_cudaExtent(gridDims.x, gridDims.y, gridDims.z);
+    p.kind = cudaMemcpyDeviceToHost;
+
+    cudaMemcpy3D(&p);
+}

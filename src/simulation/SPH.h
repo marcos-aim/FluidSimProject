@@ -38,12 +38,17 @@ public:
     int getNumParticles();
     void initDensityGrid();
 
+    // Debug
+    void updateDensityGrid();
+    void downloadDensityGrid(std::vector<float>& outBuffer);
+    uint3 gridDims;
+    float cellSize; // from input.gridCellSize
+
     // Status
     bool isRunning{};
 
 private:
     void runUpdateKernels(float deltaTime);
-    void updateDensityGrid();
 
     // SPH Parameters
     float smoothingRadius;
@@ -73,8 +78,6 @@ private:
     cudaArray_t d_densityArray = nullptr; // holds the 3D float array
     cudaSurfaceObject_t densitySurf = 0; // for fast writes
     cudaTextureObject_t densityTex = 0; // for ray-march sampling
-    uint3 gridDims; // #voxels in x,y,z
-    float cellSize; // from input.gridCellSize
 };
 
 // DEBUG:

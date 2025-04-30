@@ -38,6 +38,10 @@ struct UserInput {
     float extinctionCoeffZ = 1.0f;
     float indexOfRefraction = 1.33f; // Maximum number of bounces (reflection/refraction)
     int maxBounces = 2;
+
+    // Debug
+    bool renderVoxelGrid = false;
+    bool checkResting = false;
 };
 
 #endif // USERINPUT_H

@@ -11,6 +11,7 @@
 #include <filesystem>
 
 #include "RendererKernels.h"
+#include "SPH.h"
 
 class Renderer {
 public:
@@ -38,6 +39,10 @@ public:
     // — full‐screen quad to draw that texture —
     void prepareScreenQuad();
     void drawScreenQuad();
+
+    // DEBUG
+    void initVoxelGridRenderer();
+    void renderVoxelGrid(const UserInput& ui, SPHSimulation& sim, const glm::mat4& view, const glm::mat4& projection);
 
 private:
     GLuint sceneProgram;
@@ -72,6 +77,22 @@ private:
 
     // uniform locations for the single shader
     GLuint cudaTexLoc;
+
+    // DEBUG
+    // unit‐cube mesh
+    GLuint cubeVAO = 0;
+    GLuint cubeVBO = 0;
+    GLuint cubeEBO = 0;
+    // per‐instance: (pos.x,pos.y,pos.z,scale)
+    GLuint instVBO = 0;
+    // per‐instance opacity
+    GLuint opacVBO = 0;
+    GLuint colorVBO = 0;
+    GLuint voxelProgram = 0;
+    GLint voxelModelLoc = -1;
+    GLint voxelViewLoc = -1;
+    GLint voxelProjLoc = -1;
+    GLint voxelOpacityLoc = -1;
 };
 
 #endif // RENDERER_H
