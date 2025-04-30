@@ -111,6 +111,7 @@ __global__ void CalculateDensitiesKernel(
         float nearDensity = 0.0f;
 
         // Loop over 27 neighboring cells using the constant offsets3D array.
+        #pragma unroll
         for (int i = 0; i < 27; i++)
         {
             int3 cell = make_int3(originCell.x + offsets3D[i].x,
@@ -191,6 +192,7 @@ __global__ void CalculatePressureForceKernel(
         float3 pressureForce = make_float3(0.0f, 0.0f, 0.0f);
 
         // Loop over 27 neighboring cells using offsets3D.
+        #pragma unroll
         for (int i = 0; i < 27; i++)
         {
             int3 cell = make_int3(originCell.x + offsets3D[i].x,
@@ -287,6 +289,7 @@ __global__ void CalculateViscosityKernel(
         float3 selfVelocity = velocities[idx];
 
         // Loop over 27 neighboring cells using offsets3D.
+        #pragma unroll
         for (int i = 0; i < 27; i++)
         {
             int3 cell = make_int3(originCell.x + offsets3D[i].x,
@@ -426,6 +429,100 @@ struct CompareUint3 {
     }
 };
 
+__global__ void ComputeDensityGridKernel(
+    cudaSurfaceObject_t surf,
+    uint3 gridDims,
+    float3 boxSize,
+    float cellSize,
+    const float3 *predictedPositions,
+    const uint3 *indices,
+    const unsigned int *startIndices,
+    int numParticles,
+    float smoothingRadius) {
+    // use unsigned int, not uint
+    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
+
+    if (x >= gridDims.x || y >= gridDims.y || z >= gridDims.z)
+        return;
+
+    float3 pos = make_float3(
+        (x + 0.5f) * cellSize,
+        (y + 0.5f) * cellSize,
+        (z + 0.5f) * cellSize
+    );
+
+    if (pos.x < 0 || pos.y < 0 || pos.z < 0 ||
+        pos.x > boxSize.x || pos.y > boxSize.y || pos.z > boxSize.z) {
+        surf3Dwrite(0.0f, surf, x * sizeof(float), y, z);
+        return;
+    }
+
+    int3 origin = GetCell3D(pos, smoothingRadius);
+    float sqrR = smoothingRadius * smoothingRadius;
+    float density = 0.0f;
+
+#pragma unroll
+    for (int i = 0; i < 27; ++i) {
+        int3 offset = offsets3D[i];
+        int3 cell = make_int3(
+            origin.x + offset.x,
+            origin.y + offset.y,
+            origin.z + offset.z
+        );
+        unsigned int hash = HashCell3D(cell);
+        unsigned int key = KeyFromHash(hash, numParticles);
+        unsigned int start = startIndices[key];
+
+        for (unsigned int curr = start; curr < static_cast<unsigned int>(numParticles); ++curr) {
+            uint3 id = indices[curr];
+            if (id.z != key) break;
+            if (id.y != hash) continue;
+
+            float3 nbr = predictedPositions[id.x];
+            float3 diff = make_float3(
+                nbr.x - pos.x,
+                nbr.y - pos.y,
+                nbr.z - pos.z
+            );
+
+            float d2 = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+            if (d2 <= sqrR) {
+                float r = sqrtf(d2);
+                density += W_SpikyPow2(r, smoothingRadius);
+            }
+        }
+    }
+
+    surf3Dwrite(density, surf, x * sizeof(float), y, z);
+}
+
+void SPHSimulation::updateDensityGrid() {
+    dim3 block(8, 8, 8);
+
+    // compute how many blocks we need in each dimension
+    dim3 grid(
+      (gridDims.x + block.x - 1) / block.x,
+      (gridDims.y + block.y - 1) / block.y,
+      (gridDims.z + block.z - 1) / block.z
+    );
+
+    ComputeDensityGridKernel<<<grid, block>>>(
+        densitySurf,
+        gridDims,
+        boxSize,
+        cellSize,
+        d_predicted_positions,
+        d_indices,
+        d_start_indices,
+        numParticles,
+        smoothingRadius
+    );
+    cudaDeviceSynchronize();
+}
+
+
 //-------------------------------------------------------------------
 // Host Function: runUpdateKernels
 //-------------------------------------------------------------------
@@ -469,4 +566,6 @@ void SPHSimulation::runUpdateKernels(float deltaTime)
     // 8. Update positions and resolve collisions.
     UpdatePositionsKernel<<<blocks, threadsPerBlock>>>(d_positions, d_velocities, numParticles, deltaTime, boxSize, collisionDamping);
     cudaDeviceSynchronize();
+
+    updateDensityGrid();
 }

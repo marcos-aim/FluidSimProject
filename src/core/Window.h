@@ -66,9 +66,10 @@ public:
 
     void setSimulation(SPHSimulation* sim) { simulation = sim; }
 
+    int width, height;
+
 private:
     // Private members
-    int width, height;
     std::string title;
     GLFWwindow* window;
 

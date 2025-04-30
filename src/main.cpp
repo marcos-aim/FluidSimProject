@@ -13,19 +13,9 @@
 int main() {
     Window window(1280, 720, "SPH Simulation Test");
 
-    // Initialize GLFW
-    if (!window.initializeGLFW()) {
-        return -1;
-    }
-
-    // Create the window
-    if (!window.createWindow()) {
-        return -1;
-    }
-
-    // Load OpenGL functions with GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
+    // Initialize GLFW + create window + load GLAD…
+    if (!window.initializeGLFW() || !window.createWindow() || !gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD or start Window" << std::endl;
         return -1;
     }
 
@@ -37,6 +27,8 @@ int main() {
     Renderer renderer;
     window.rendererWindow = &renderer;
     renderer.createShaderProgram();
+    renderer.initCudaInterop(window.width, window.height);
+    renderer.prepareScreenQuad();
 
     renderer.prepareBoxBuffers(window.userInput.boxSizeX, window.userInput.boxSizeY, window.userInput.boxSizeZ);
 
@@ -80,10 +72,6 @@ int main() {
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-        // Use shader program
-        glUseProgram(renderer.getShaderProgram());
-
         simulationDt = window.userInput.dt;
         while (accumulator >= simulationDt) {
             sphSim.isRunning = window.userInput.runSimulation;
@@ -93,16 +81,27 @@ int main() {
             accumulator -= simulationDt;
         }
 
-        if (sphSim.isRunning) {
-            renderer.updateInstanceBufferWithCuda(sphSim.getDevicePositions(), sphSim.getNumParticles());
-        }
-
         window.beginFrame();
 
-        renderer.drawBox(window.cameraView, window.cameraProjection);
+        if (window.userInput.rayMarchRender) {
+            // --- RAY-MARCH MODE ---
+            // 1) map → launch the checker into the GL texture → unmap
+            cudaSurfaceObject_t surf = renderer.mapCudaSurface();
+            launchGenerateChecker(surf, window.width, window.height, 32);
+            renderer.unmapCudaSurface(surf);
 
-        glm::vec3 lightDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
-        renderer.drawSpheres(window.cameraView, window.cameraProjection, lightDirection);
+            renderer.drawScreenQuad();
+        }
+        else {
+            // --- SPH BOX+SPHERE MODE ---
+            if (sphSim.isRunning) {
+                renderer.updateInstanceBufferWithCuda(sphSim.getDevicePositions(), sphSim.getNumParticles());
+            }
+            renderer.drawBox(window.cameraView, window.cameraProjection);
+
+            glm::vec3 lightDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 1.0f));
+            renderer.drawSpheres(window.cameraView, window.cameraProjection, lightDirection);
+        }
 
         window.renderMenu();
 

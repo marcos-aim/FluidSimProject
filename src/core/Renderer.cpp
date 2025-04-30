@@ -19,90 +19,101 @@ Renderer::~Renderer() {
 
 
 void Renderer::createShaderProgram() {
-    // Vertex and fragment shaders
-    const char* vertexShaderSource = R"(
+    // 1) Scene program (box + instanced spheres)
+    const char* sceneVertSrc = R"(
     #version 450 core
-
     layout(location = 0) in vec3 aPos;
-    layout(location = 1) in mat4 instanceModel; // Per-instance model matrix
-
-    uniform mat4 model;        // For objects like the box
+    layout(location = 1) in mat4 instanceModel;
+    uniform mat4 model;
     uniform mat4 view;
     uniform mat4 projection;
-
-    uniform bool useInstance;  // Flag to differentiate between instanced and single-object rendering
-
+    uniform bool useInstance;
     out vec2 uv;
-
     void main() {
-        mat4 effectiveModel = useInstance ? instanceModel : model;
-        gl_Position = projection * view * effectiveModel * vec4(aPos, 1.0);
+        mat4 M = useInstance ? instanceModel : model;
+        gl_Position = projection * view * M * vec4(aPos,1.0);
         uv = aPos.xy;
     }
-
     )";
 
-    const char* fragmentShaderSource = R"(
+    const char* sceneFragSrc = R"(
     #version 450 core
-
-    uniform vec4 color;          // Base color of the particle
-    uniform vec3 lightDirection; // Direction of the light source
+    in vec2 uv;
+    uniform vec4 color;
+    uniform vec3 lightDirection;
     uniform bool useInstance;
-
-    in vec2 uv;                  // Normalized particle space coordinates
-    out vec4 FragColor;          // Output fragment color
-
+    out vec4 FragColor;
     void main() {
-       if (!useInstance) {
-            // Flat color when instancing is not enabled
+        if (!useInstance) {
             FragColor = color;
             return;
         }
-    float distFromCenter = length(uv);
-    if (distFromCenter > 1.0) discard;
-
-    vec3 normal = normalize(vec3(uv, sqrt(1.0 - distFromCenter * distFromCenter)));
-    float lightIntensity = max(dot(normal, normalize(lightDirection)), 0.0);
-
-    vec3 viewDirection = vec3(0.0, 0.0, 1.0);
-    vec3 halfVector = normalize(viewDirection + normalize(lightDirection));
-    float specular = pow(max(dot(normal, halfVector), 0.0), 16.0) * 1;
-
-    float ambient = 0.2;
-    vec3 ambientColor = color.rgb * ambient;
-
-    vec3 shadedColor = ambientColor + (color.rgb * lightIntensity) + vec3(1.0) * specular;
-    float alpha = 1.0 - smoothstep(0.95, 1.0, distFromCenter);
-
-    FragColor = vec4(shadedColor, color.a * alpha);
+        float d = length(uv);
+        if (d > 1.0) discard;
+        vec3 N = normalize(vec3(uv, sqrt(1.0 - d*d)));
+        float L = max(dot(N, normalize(lightDirection)),0.0);
+        vec3 V = vec3(0,0,1), H = normalize(V + normalize(lightDirection));
+        float S = pow(max(dot(N,H),0.0),16.0);
+        float A = 0.2;
+        vec3 amb = color.rgb * A;
+        vec3 col = amb + color.rgb * L + vec3(1.0)*S;
+        float alpha = 1.0 - smoothstep(0.95,1.0,d);
+        FragColor = vec4(col, color.a * alpha);
     }
     )";
 
-    // Compile shaders
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-    glCompileShader(vertexShader);
+    auto compileAndLink = [&](const char* vsrc, const char* fsrc){
+        GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vs,1,&vsrc,nullptr); glCompileShader(vs);
+        GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fs,1,&fsrc,nullptr); glCompileShader(fs);
+        GLuint prog = glCreateProgram();
+        glAttachShader(prog,vs); glAttachShader(prog,fs);
+        glLinkProgram(prog);
+        glDeleteShader(vs); glDeleteShader(fs);
+        return prog;
+    };
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-    glCompileShader(fragmentShader);
+    sceneProgram = compileAndLink(sceneVertSrc, sceneFragSrc);
+    loadSceneUniformLocations();
 
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    // 2) Texture program (full-screen quad)
+    const char* texVertSrc = R"(
+    #version 450 core
+    layout(location = 0) in vec3 aPos;
+    layout(location = 1) in vec2 aUV;
+    out vec2 uv;
+    void main() {
+        gl_Position = vec4(aPos.xy,0.0,1.0);
+        uv = aUV;
+    }
+    )";
 
-    loadUniformLocations();
+    const char* texFragSrc = R"(
+    #version 450 core
+    in vec2 uv;
+    uniform sampler2D uCudaTex;
+    out vec4 FragColor;
+    void main() {
+        FragColor = texture(uCudaTex, uv);
+    }
+    )";
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    textureProgram = compileAndLink(texVertSrc, texFragSrc);
+    loadTextureUniformLocations();
 }
 
-void Renderer::loadUniformLocations() {
-    modelLoc = glGetUniformLocation(shaderProgram, "model");
-    viewLoc = glGetUniformLocation(shaderProgram, "view");
-    projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    colorLoc = glGetUniformLocation(shaderProgram, "color");
+void Renderer::loadSceneUniformLocations() {
+    modelLoc = glGetUniformLocation(sceneProgram, "model");
+    viewLoc = glGetUniformLocation(sceneProgram, "view");
+    projectionLoc = glGetUniformLocation(sceneProgram, "projection");
+    colorLoc = glGetUniformLocation(sceneProgram, "color");
+    lightDirLoc = glGetUniformLocation(sceneProgram, "lightDirection");
+    useInstLoc = glGetUniformLocation(sceneProgram, "useInstance");
+}
+
+void Renderer::loadTextureUniformLocations() {
+    cudaTexLoc = glGetUniformLocation(textureProgram, "uCudaTex");
 }
 
 void Renderer::generateBoxData(float width, float height, float depth) {
@@ -146,8 +157,9 @@ void Renderer::prepareBoxBuffers(float width, float height, float depth) {
 }
 
 void Renderer::drawBox(const glm::mat4& view, const glm::mat4& projection) {
+    glUseProgram(sceneProgram);
     glm::mat4 boxModel = glm::mat4(1.0f);
-    glUniform1i(glGetUniformLocation(shaderProgram, "useInstance"), false);
+    glUniform1i(useInstLoc, false);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(boxModel));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -238,12 +250,12 @@ void Renderer::prepareSphereBuffers(float radius, int slices, int stacks, const 
 }
 
 void Renderer::drawSpheres(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDirection) {
+    glUseProgram(sceneProgram);
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(shaderProgram, "useInstance"), true);
+    glUniform1i(useInstLoc, true);
     glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f);
     // Pass the light direction to the shader
-    GLint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDirection");
     glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDirection));
 
     glBindVertexArray(sphereVAO);
@@ -292,4 +304,81 @@ void Renderer::updateInstanceBufferWithCuda(float3* d_positions, int numParticle
 
     // Unmap the resource so OpenGL can use the updated data.
     cudaGraphicsUnmapResources(1, &cudaInstanceResource, 0);
+}
+
+void Renderer::initCudaInterop(int width, int height) {
+    texWidth  = width;
+    texHeight = height;
+
+    // 1) Create a GL texture
+    glGenTextures(1, &cudaTexture);
+    glBindTexture(GL_TEXTURE_2D, cudaTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+                 width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // 2) Register it with CUDA
+    cudaGraphicsGLRegisterImage(
+      &cudaTextureResource,
+      cudaTexture,
+      GL_TEXTURE_2D,
+      cudaGraphicsRegisterFlagsSurfaceLoadStore
+    );
+}
+
+cudaSurfaceObject_t Renderer::mapCudaSurface() {
+    cudaGraphicsMapResources(1, &cudaTextureResource, 0);
+    cudaArray_t array;
+    cudaGraphicsSubResourceGetMappedArray(
+      &array, cudaTextureResource, 0, 0
+    );
+    cudaResourceDesc desc = {};
+    desc.resType          = cudaResourceTypeArray;
+    desc.res.array.array  = array;
+    cudaSurfaceObject_t surf = 0;
+    cudaCreateSurfaceObject(&surf, &desc);
+    return surf;
+}
+
+void Renderer::unmapCudaSurface(cudaSurfaceObject_t surf) {
+    cudaDestroySurfaceObject(surf);
+    cudaGraphicsUnmapResources(1, &cudaTextureResource, 0);
+}
+
+void Renderer::prepareScreenQuad() {
+    float quadVerts[] = {
+        -1, +1,  0,1,
+        -1, -1,  0,0,
+        +1, -1,  1,0,
+        +1, +1,  1,1,
+    };
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVerts), quadVerts, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)(2*sizeof(float)));
+    glBindVertexArray(0);
+}
+
+void Renderer::drawScreenQuad() {
+    // set shader to “texture mode”
+    glUseProgram(textureProgram);
+
+    // bind the CUDA-produced texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, cudaTexture);
+    glUniform1i(cudaTexLoc, 0);
+
+    // draw the full-screen quad
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }

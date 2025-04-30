@@ -11,6 +11,9 @@ extern "C" {
     // Host function prototype for launching the kernel.
     void launchUpdateInstanceTransformsKernel(const float3* d_positions, float* d_instanceTransforms, int numParticles);
 
+    void launchGenerateChecker(cudaSurfaceObject_t surface, int width, int height, int checkerSize);
+
+
 #ifdef __cplusplus
 }
 #endif

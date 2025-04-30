@@ -47,3 +47,38 @@ extern "C" void launchUpdateInstanceTransformsKernel(const float3* d_positions, 
     UpdateInstanceTransformsKernel<<<blocks, threadsPerBlock>>>(d_positions, d_instanceTransforms, numParticles);
     cudaDeviceSynchronize();
 }
+
+__global__ void CheckerKernel(cudaSurfaceObject_t surface,
+                              int width, int height,
+                              int checkerSize)
+{
+    int x = blockIdx.x*blockDim.x + threadIdx.x;
+    int y = blockIdx.y*blockDim.y + threadIdx.y;
+    if (x >= width || y >= height) return;
+
+    // shift coords so origin is at the center
+    float fx = (float(x) - 0.5f * width)  / float(checkerSize);
+    float fy = (float(y) - 0.5f * height) / float(checkerSize);
+
+    // floorf gives you the integer “tile index” even for negative values
+    int cx = int(floorf(fx));
+    int cy = int(floorf(fy));
+
+    bool isBlack = ((cx + cy) & 1) != 0;
+    uchar4 c = isBlack
+        ? make_uchar4(  0,   0,   0, 255)
+        : make_uchar4(255, 255, 255, 255);
+
+    surf2Dwrite(c, surface, x * sizeof(uchar4), y);
+}
+
+extern "C" void launchGenerateChecker(cudaSurfaceObject_t surface,
+                                      int width, int height,
+                                      int checkerSize)
+{
+    dim3 block(16,16);
+    dim3 grid((width  + block.x - 1) / block.x,
+              (height + block.y - 1) / block.y);
+    CheckerKernel<<<grid, block>>>(surface, width, height, checkerSize);
+    cudaDeviceSynchronize();
+}

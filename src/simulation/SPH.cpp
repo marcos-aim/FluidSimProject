@@ -14,18 +14,18 @@
 
 SPHSimulation::SPHSimulation(const UserInput& input) {
     // Initialize simulation parameters from UserInput:
-    numParticles    = input.particleCount;
+    numParticles = input.particleCount;
     smoothingRadius = input.h;
-    mass            = input.mass;
-    // Use the explicit multipliers provided by the user.
-    pMult           = input.pMult;          // New: pressure multiplier
-    nearPMult       = input.nearPMult;      // New: near-pressure multiplier
-    viscosityMult   = input.viscosityMultiplier;
-    surfaceTension  = input.tension;
-    gravity         = input.g;
-    restingDensity  = input.restingDensity;
-    dt              = input.dt;
-    collisionDamping = input.collisionDamping; // New: collision damping
+    mass = input.mass;
+    pMult = input.pMult; // pressure multiplier
+    nearPMult = input.nearPMult; // near-pressure multiplier
+    viscosityMult = input.viscosityMultiplier;
+    surfaceTension = input.tension;
+    gravity = input.g;
+    restingDensity = input.restingDensity;
+    dt = input.dt;
+    collisionDamping = input.collisionDamping; // collision damping
+    cellSize = input.gridCellSize;
 
     // Convert box size from UserInput to CUDA float3
     boxSize = make_float3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
@@ -70,10 +70,16 @@ SPHSimulation::SPHSimulation(const UserInput& input) {
     cudaMemset(d_start_indices, 0, numParticles * sizeof(unsigned int));
 
     std::cout << "SPHSimulation initialized with " << numParticles << " particles." << std::endl;
+
+    initDensityGrid();
 }
 
 SPHSimulation::~SPHSimulation() {
     // Free device memory allocated for particle data
+    if (densityTex)    cudaDestroyTextureObject(densityTex);
+    if (densitySurf)   cudaDestroySurfaceObject(densitySurf);
+    if (d_densityArray) cudaFreeArray(d_densityArray);
+
     if (d_positions) {
         cudaFree(d_positions);
         d_positions = nullptr;
@@ -105,16 +111,19 @@ SPHSimulation::~SPHSimulation() {
 void SPHSimulation::updateParameters(const UserInput& input) {
     // Update internal simulation parameters from the new input.
     smoothingRadius = input.h;
-    mass            = input.mass;
-    pMult           = input.pMult;            // Use new explicit parameter.
-    nearPMult       = input.nearPMult;        // Use new explicit parameter.
-    viscosityMult   = input.viscosityMultiplier;
-    surfaceTension  = input.tension;
-    gravity         = input.g;
-    restingDensity  = input.restingDensity;
-    dt              = input.dt;
+    mass = input.mass;
+    pMult = input.pMult; // Use new explicit parameter.
+    nearPMult = input.nearPMult; // Use new explicit parameter.
+    viscosityMult = input.viscosityMultiplier;
+    surfaceTension = input.tension;
+    gravity = input.g;
+    restingDensity = input.restingDensity;
+    dt = input.dt;
     collisionDamping = input.collisionDamping; // Update collision damping from input.
-    boxSize         = make_float3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
+    boxSize = make_float3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
+    cellSize = input.gridCellSize;
+
+    initDensityGrid();
 
     std::cout << "SPHSimulation parameters updated." << std::endl;
 }
@@ -206,3 +215,32 @@ float3* SPHSimulation::getDevicePositions() {
 int SPHSimulation::getNumParticles() {
     return numParticles;
 }
+
+void SPHSimulation::initDensityGrid() {
+    // 1) compute voxel counts (ceil to cover entire box)
+    gridDims.x     = (unsigned)std::ceil(boxSize.x / cellSize);
+    gridDims.y     = (unsigned)std::ceil(boxSize.y / cellSize);
+    gridDims.z     = (unsigned)std::ceil(boxSize.z / cellSize);
+
+    // 2) allocate 3D CUDA array
+    cudaChannelFormatDesc ch = cudaCreateChannelDesc<float>();
+    cudaExtent extent{gridDims.x,gridDims.y,gridDims.z};
+    cudaMalloc3DArray(&d_densityArray, &ch, extent);
+
+    // 3) bind as surface for writes
+    cudaResourceDesc rd = {};
+    rd.resType            = cudaResourceTypeArray;
+    rd.res.array.array    = d_densityArray;
+    cudaCreateSurfaceObject(&densitySurf, &rd);
+
+    // 4) create linear-filtered texture for sampling
+    cudaResourceDesc trd = rd;
+    cudaTextureDesc  td  = {};
+    td.normalizedCoords  = true;
+    td.filterMode        = cudaFilterModeLinear;
+    td.addressMode[0]    =
+    td.addressMode[1]    =
+    td.addressMode[2]    = cudaAddressModeClamp;
+    cudaCreateTextureObject(&densityTex, &trd, &td, nullptr);
+}
+

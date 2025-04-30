@@ -25,21 +25,31 @@ public:
     void drawBox(const glm::mat4& view, const glm::mat4& projection);
     void drawSpheres(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDirection);
 
-    GLuint getShaderProgram() {return shaderProgram;}
-
     void updateInstanceBuffer(const std::vector<glm::vec3>& updatedPositions);
     void updateInstanceBufferWithCuda(float3* d_positions, int numParticles);
 
     std::vector<glm::mat4> sphereTransforms;
 
+    // — CUDA↔GL interop for arbitrary framebuffers —
+    void initCudaInterop(int width, int height);
+    cudaSurfaceObject_t mapCudaSurface();
+    void unmapCudaSurface(cudaSurfaceObject_t surf);
+
+    // — full‐screen quad to draw that texture —
+    void prepareScreenQuad();
+    void drawScreenQuad();
+
 private:
-    GLuint shaderProgram;
+    GLuint sceneProgram;
+    GLuint textureProgram;
 
     GLuint boxVAO, boxVBO, boxEBO; // Box Buffers
     GLuint sphereVAO, sphereVBO, sphereEBO, instanceVBO; // Particle Sphere Buffers and Instancing Buffer
 
-    GLuint modelLoc, viewLoc, projectionLoc, colorLoc; // Uniform Location Ids
-    void loadUniformLocations();
+    GLuint modelLoc, viewLoc, projectionLoc, colorLoc, lightDirLoc, useInstLoc; // Uniform Location Ids
+
+    void loadSceneUniformLocations();
+    void loadTextureUniformLocations();
 
     std::vector<float> boxVertices;
     std::vector<unsigned int> boxEdges;
@@ -50,6 +60,18 @@ private:
     void generateSphereData(float radius, int slices, int stacks);
 
     cudaGraphicsResource_t cudaInstanceResource = nullptr;
+
+    GLuint cudaTexture = 0;
+    cudaGraphicsResource_t cudaTextureResource = nullptr;
+    int texWidth = 0;
+    int texHeight = 0;
+
+    // full-screen quad
+    GLuint quadVAO = 0;
+    GLuint quadVBO = 0;
+
+    // uniform locations for the single shader
+    GLuint cudaTexLoc;
 };
 
 #endif // RENDERER_H

@@ -131,6 +131,14 @@ void Window::setupMenuTabs()
         changedSPH |= ImGui::InputFloat("##Smoothing Radius Input", &userInput.h, 0.0f, 0.0f, "%.3f");
         ImGui::PopStyleColor();
 
+        // Smoothing Radius (h):
+        ImGui::Text("Grid Cell Size:");
+        changedSPH |= ImGui::SliderFloat("##Grid Cell Size Slider", &userInput.gridCellSize, 0.01f, 1.0f, "%.3f");
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        changedSPH |= ImGui::InputFloat("##Grid Cell Size Input", &userInput.gridCellSize, 0.0f, 0.0f, "%.3f");
+        ImGui::PopStyleColor();
+
         // Gravity (g):
         ImGui::Text("Gravity (g):");
         changedSPH |= ImGui::SliderFloat("##Gravity Slider", &userInput.g, -50.0f, 0.0f, "%.2f");
@@ -175,7 +183,62 @@ void Window::setupMenuTabs()
         }
     }
 
-    // --- Simulation Controls ---
+    // --- Ray March Renderer ---
+    if (ImGui::CollapsingHeader("Ray March Renderer"))
+    {
+        bool changedRM = false;
+
+        // Enable / disable ray marching
+        changedRM |= ImGui::Checkbox("Enable Ray Marching", &userInput.rayMarchRender);
+
+        // Surface (view) step size
+        ImGui::Text("Surface Step Size:");
+        changedRM |= ImGui::SliderFloat("##SurfaceStepSize Slider", &userInput.surfaceStepSize, 0.001f, 0.1f, "%.4f");
+        ImGui::SameLine();
+        changedRM |= ImGui::InputFloat("##SurfaceStepSize Input", &userInput.surfaceStepSize, 0.0f, 0.0f, "%.4f");
+
+        // Accumulation (light) step size
+        ImGui::Text("Accumulation Step Size:");
+        changedRM |= ImGui::SliderFloat("##AccumulationStepSize Slider", &userInput.accumulationStepSize, 0.001f, 0.1f, "%.4f");
+        ImGui::SameLine();
+        changedRM |= ImGui::InputFloat("##AccumulationStepSize Input", &userInput.accumulationStepSize, 0.0f, 0.0f, "%.4f");
+
+        // Extinction coefficients
+        ImGui::Text("Extinction (RGB):");
+        float extRGB[3] = {
+            userInput.extinctionCoeffX,
+            userInput.extinctionCoeffY,
+            userInput.extinctionCoeffZ
+        };
+        bool extChanged = ImGui::SliderFloat3("##ExtinctionRGB", extRGB, 0.0f, 10.0f, "%.2f");
+        if (extChanged)
+        {
+            userInput.extinctionCoeffX = extRGB[0];
+            userInput.extinctionCoeffY = extRGB[1];
+            userInput.extinctionCoeffZ = extRGB[2];
+            changedRM = true;
+        }
+
+        // Index of refraction
+        ImGui::Text("Index of Refraction:");
+        changedRM |= ImGui::SliderFloat("##IOR Slider", &userInput.indexOfRefraction, 1.0f, 3.0f, "%.2f");
+        ImGui::SameLine();
+        changedRM |= ImGui::InputFloat("##IOR Input", &userInput.indexOfRefraction, 0.0f, 0.0f, "%.2f");
+
+        // Max bounces
+        ImGui::Text("Max Bounces:");
+        changedRM |= ImGui::SliderInt("##MaxBounces Slider", &userInput.maxBounces, 0, 10);
+        ImGui::SameLine();
+        changedRM |= ImGui::InputInt("##MaxBounces Input", &userInput.maxBounces);
+
+        if (changedRM)
+        {
+            // Push your new ray-march parameters to the renderer
+            simulation->updateParameters(userInput);
+        }
+    }
+
+        // --- Simulation Controls ---
     if (ImGui::CollapsingHeader("Simulation Controls"))
     {
         if (ImGui::Checkbox("Run Simulation", &userInput.runSimulation))

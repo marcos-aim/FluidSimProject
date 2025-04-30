@@ -36,12 +36,14 @@ public:
     std::vector<glm::vec3>& getParticlePositions();
     float3* getDevicePositions();
     int getNumParticles();
+    void initDensityGrid();
 
     // Status
     bool isRunning{};
 
 private:
     void runUpdateKernels(float deltaTime);
+    void updateDensityGrid();
 
     // SPH Parameters
     float smoothingRadius;
@@ -66,6 +68,13 @@ private:
     float2* d_densities;
     uint3* d_indices;
     unsigned int* d_start_indices;
+
+    // Voxel grid for density sampling
+    cudaArray_t d_densityArray = nullptr; // holds the 3D float array
+    cudaSurfaceObject_t densitySurf = 0; // for fast writes
+    cudaTextureObject_t densityTex = 0; // for ray-march sampling
+    uint3 gridDims; // #voxels in x,y,z
+    float cellSize; // from input.gridCellSize
 };
 
 // DEBUG:
