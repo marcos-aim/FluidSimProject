@@ -289,8 +289,6 @@ void Renderer::updateInstanceBuffer(const std::vector<glm::vec3> &updatedPositio
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-#include "RendererKernels.h" // Make sure this include is present at the top if not already
-
 void Renderer::updateInstanceBufferWithCuda(float3 *d_positions, int numParticles) {
     // Map the instance VBO so that CUDA can access it directly.
     cudaError_t err = cudaGraphicsMapResources(1, &cudaInstanceResource, 0);

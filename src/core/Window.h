@@ -68,6 +68,8 @@ public:
 
     int width, height;
 
+    CameraCUDAParams getCameraCUDAParams() const;
+
 private:
     // Private members
     std::string title;

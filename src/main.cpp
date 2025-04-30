@@ -87,9 +87,16 @@ int main() {
             // --- RAY-MARCH MODE ---
             // 1) map → launch the checker into the GL texture → unmap
             cudaSurfaceObject_t surf = renderer.mapCudaSurface();
-            launchGenerateChecker(surf, window.width, window.height, 32);
-            renderer.unmapCudaSurface(surf);
 
+            //launchGenerateChecker(surf, window.width, window.height, 32);
+            auto cam = window.getCameraCUDAParams();
+            auto ui  = window.userInput;
+
+            // 3) launch
+            launchAABBTestKernel(surf, cam, ui);
+
+            // 4) unmap + draw
+            renderer.unmapCudaSurface(surf);
             renderer.drawScreenQuad();
         }
         else if (window.userInput.renderVoxelGrid) {

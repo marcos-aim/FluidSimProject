@@ -250,3 +250,39 @@ void Window::scrollCallback(GLFWwindow* glfwWindow, double xoffset, double yoffs
     if (win->fov > 45.0f)
         win->fov = 45.0f;
 }
+
+CameraCUDAParams Window::getCameraCUDAParams() const {
+    CameraCUDAParams p{};
+
+    // 1) position + basis
+    p.pos = make_float3(cameraPos.x, cameraPos.y, cameraPos.z);
+    p.forward = make_float3(cameraFront.x, cameraFront.y, cameraFront.z);           // f (already unit)
+
+    // world-up (0,1,0) × forward → tmpR
+    float3 tmpR = make_float3(
+        p.forward.y * 0.0f - p.forward.z * 1.0f,
+        p.forward.z * 0.0f - p.forward.x * 0.0f,
+        p.forward.x * 1.0f - p.forward.y * 0.0f
+    );                                                                               // cross(f,(0,1,0))
+
+    float invLenR = 1.0f / sqrtf(tmpR.x*tmpR.x + tmpR.y*tmpR.y + tmpR.z*tmpR.z);     // 1/‖tmpR‖
+    p.right = make_float3(tmpR.x * invLenR,
+                          tmpR.y * invLenR,
+                          tmpR.z * invLenR);                                         // unit right
+
+    // up = right × forward  (already unit, perpendicular to both)
+    p.up = make_float3(
+        p.right.y * p.forward.z - p.right.z * p.forward.y,
+        p.right.z * p.forward.x - p.right.x * p.forward.z,
+        p.right.x * p.forward.y - p.right.y * p.forward.x
+    );
+
+    // 3) FOV/aspect
+    p.tanHalfFOV = tanf(glm::radians(fov) * 0.5f);
+    p.aspect = static_cast<float>(width) / static_cast<float>(height);
+
+    p.width = width;
+    p.height = height;
+
+    return p;
+}
