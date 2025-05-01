@@ -47,6 +47,9 @@ public:
     // Status
     bool isRunning{};
 
+    cudaSurfaceObject_t densitySurf = 0; // for fast writes
+    cudaTextureObject_t densityTex = 0; // for ray-march sampling
+
 private:
     void runUpdateKernels(float deltaTime);
 
@@ -76,8 +79,6 @@ private:
 
     // Voxel grid for density sampling
     cudaArray_t d_densityArray = nullptr; // holds the 3D float array
-    cudaSurfaceObject_t densitySurf = 0; // for fast writes
-    cudaTextureObject_t densityTex = 0; // for ray-march sampling
 };
 
 // DEBUG:

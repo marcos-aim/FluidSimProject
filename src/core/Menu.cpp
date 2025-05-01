@@ -194,12 +194,14 @@ void Window::setupMenuTabs()
 
         // Enable / disable ray marching
         changedRM |= ImGui::Checkbox("Enable Ray Marching", &userInput.rayMarchRender);
+        ImGui::SameLine();
+        changedRM |= ImGui::Checkbox("Debug Surfaces", &userInput.debugSurface);
 
         // Surface (view) step size
-        ImGui::Text("Surface Step Size:");
-        changedRM |= ImGui::SliderFloat("##SurfaceStepSize Slider", &userInput.surfaceStepSize, 0.001f, 0.1f, "%.4f");
+        ImGui::Text("Surface Threshold:");
+        changedRM |= ImGui::SliderFloat("##Surface Threshold", &userInput.surfaceMinDensity, 0.001f, 1000.f, "%.4f");
         ImGui::SameLine();
-        changedRM |= ImGui::InputFloat("##SurfaceStepSize Input", &userInput.surfaceStepSize, 0.0f, 0.0f, "%.4f");
+        changedRM |= ImGui::InputFloat("##Surface Threshold Input", &userInput.surfaceMinDensity, 0.0f, 0.0f, "%.4f");
 
         // Accumulation (light) step size
         ImGui::Text("Accumulation Step Size:");

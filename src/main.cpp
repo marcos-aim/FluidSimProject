@@ -14,7 +14,7 @@ int main() {
     Window window(1280, 720, "SPH Simulation Test");
 
     // Initialize GLFW + create window + load GLAD…
-    if (!window.initializeGLFW() || !window.createWindow() || !gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!window.initializeGLFW() || !window.createWindow() || !gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD or start Window" << std::endl;
         return -1;
     }
@@ -49,7 +49,7 @@ int main() {
     sphSim.initParticles(StartingPosition::TOP_CORNER);
     particlePositions = sphSim.h_positions;
 
-    for (const auto& position : particlePositions) {
+    for (const auto &position: particlePositions) {
         glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
         particleTransforms.push_back(transform);
     }
@@ -90,16 +90,23 @@ int main() {
 
             //launchGenerateChecker(surf, window.width, window.height, 32);
             auto cam = window.getCameraCUDAParams();
-            auto ui  = window.userInput;
+            auto ui = window.userInput;
 
             // 3) launch
-            launchAABBTestKernel(surf, cam, ui);
+            if (ui.debugSurface) {
+                launchSurfaceDebug(surf, cam,
+                                   sphSim.densityTex,
+                                   make_float3(ui.boxSizeX, ui.boxSizeY, ui.boxSizeZ),
+                                   ui.accumulationStepSize,
+                                   ui.surfaceMinDensity);
+            } else {
+                launchAABBTestKernel(surf, cam, ui); // ← your old white-mask pass
+            }
 
             // 4) unmap + draw
             renderer.unmapCudaSurface(surf);
             renderer.drawScreenQuad();
-        }
-        else if (window.userInput.renderVoxelGrid) {
+        } else if (window.userInput.renderVoxelGrid) {
             // --- VOXEL-GRID DEBUG MODE ---
             // Pull down the CUDA density grid and draw instanced cubes + grid lines
             renderer.renderVoxelGrid(
@@ -108,8 +115,7 @@ int main() {
                 window.cameraView,
                 window.cameraProjection
             );
-        }
-        else {
+        } else {
             // --- SPH BOX+SPHERE MODE ---
             if (sphSim.isRunning) {
                 renderer.updateInstanceBufferWithCuda(sphSim.getDevicePositions(), sphSim.getNumParticles());

@@ -3,9 +3,9 @@
 
 struct UserInput {
     // Box settings
-    float boxSizeX = 8.0f;
-    float boxSizeY = 6.0f;
-    float boxSizeZ = 6.0f;
+    float boxSizeX = 5.0f;
+    float boxSizeY = 4.0f;
+    float boxSizeZ = 5.0f;
 
     // Particle settings
     float particleR = 0.04f;
@@ -13,7 +13,7 @@ struct UserInput {
     int sphereStacks = 5;
 
     // SPH settings
-    int particleCount = 100000;
+    int particleCount = 50000;
     float restingDensity = 600.0f;      // Resting (target) density
     float viscosityMultiplier = 0.01f;    // Viscosity multiplier
     float mass = 1.0f;                   // Particle mass
@@ -24,14 +24,15 @@ struct UserInput {
     float tension = 0.2f;                // Surface tension
     float collisionDamping = 0.8f;       // Collision damping factor
 
-    float gridCellSize = 0.10f;
+    float gridCellSize = 0.055f;
 
     // Simulation controls
     bool runSimulation = false;
     float dt = 1.0f / 60.0f;                     // Time step
 
     bool rayMarchRender = false;
-    float surfaceStepSize = 0.01f;
+    bool debugSurface = false;
+    float surfaceMinDensity = 420.f;
     float accumulationStepSize = 0.01f;
     float extinctionCoeffX = 1.0f;
     float extinctionCoeffY = 1.0f;

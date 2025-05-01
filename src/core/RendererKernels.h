@@ -17,6 +17,14 @@ void launchGenerateChecker(cudaSurfaceObject_t surface, int width, int height, i
 
 void launchAABBTestKernel(cudaSurfaceObject_t surface, const CameraCUDAParams &cam, const UserInput &ui);
 
+    void launchSurfaceDebug(cudaSurfaceObject_t surf,
+                            const CameraCUDAParams &cam,
+                            cudaTextureObject_t   densTex,
+                            const float3          &boxSize,
+                            float   marchStep,
+                            float   surfMinDensity,
+                            float   maxDst = 1e20f);
+
 
 #ifdef __cplusplus
 }
