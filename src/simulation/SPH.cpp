@@ -108,6 +108,7 @@ SPHSimulation::~SPHSimulation() {
     std::cout << "SPHSimulation resources freed. All device memory released." << std::endl;
 }
 
+float3 prevBox = make_float3(0, 0, 0);
 void SPHSimulation::updateParameters(const UserInput& input) {
     // Update internal simulation parameters from the new input.
     smoothingRadius = input.h;
@@ -123,7 +124,15 @@ void SPHSimulation::updateParameters(const UserInput& input) {
     boxSize = make_float3(input.boxSizeX, input.boxSizeY, input.boxSizeZ);
     cellSize = input.gridCellSize;
 
-    initDensityGrid();
+    bool sizeChanged =
+    prevBox.x != boxSize.x ||
+    prevBox.y != boxSize.y ||
+    prevBox.z != boxSize.z;
+
+    if (sizeChanged) {
+        initDensityGrid();
+        updateDensityGrid();
+    }
 
     std::cout << "SPHSimulation parameters updated." << std::endl;
 }
